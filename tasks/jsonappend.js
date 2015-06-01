@@ -14,37 +14,50 @@ module.exports = function(grunt) {
   // creation: http://gruntjs.com/creating-tasks
 
   grunt.registerMultiTask('jsonappend', 'The best Grunt plugin ever.', function() {
+    var _fs = require('fs');
+    
     // Merge task-specific and/or target-specific options with these defaults.
     var options = this.options({
-      punctuation: '.',
-      separator: ', '
     });
 
     // Iterate over all specified file groups.
     this.files.forEach(function(f) {
-      // Concat specified files.
-      var src = f.src.filter(function(filepath) {
-        // Warn on and remove invalid source files (if nonull was set).
-        if (!grunt.file.exists(filepath)) {
-          grunt.log.warn('Source file "' + filepath + '" not found.');
-          return false;
-        } else {
-          return true;
-        }
-      }).map(function(filepath) {
-        // Read file source.
-        return grunt.file.read(filepath);
-      }).join(grunt.util.normalizelf(options.separator));
+        var output = {};
 
-      // Handle options.
-      src += options.punctuation;
+        var src = f.src.filter(function(filepath) {
+            var full = f.cwd + '/' + filepath;
 
-      // Write the destination file.
-      grunt.file.write(f.dest, src);
+            if (!grunt.file.exists(full)) {
+                return;
+            }
 
-      // Print a success message.
-      grunt.log.writeln('File "' + f.dest + '" created.');
+            grunt.log.writeln('Reading ' + full);
+
+            var source = grunt.file.read(full);
+
+            var json = JSON.parse(source);
+
+            for (var x in json) {
+                var tree = json[x];
+
+                if (typeof output[x] == 'undefined') {
+                    output[x] = {};
+                }
+
+                for (var k in tree) {
+                    if (k.match(f.match)) {
+                        json[x][k] = json[x][k] + f.append;
+                    }
+
+                    output[x][k] = json[x][k];
+                }
+            }
+        });
+
+        var out = f.dest + '/' + f.target;
+
+        grunt.file.write(out, JSON.stringify(output));
+        grunt.log.writeln('File "' + out + '" written');
     });
   });
-
 };
